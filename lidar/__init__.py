@@ -5,7 +5,7 @@ from .rplidar import RPLidar
 PORT_NAME = 'COM5'
 
 class LidarStreamer:
-    def __init__(self, port=PORT_NAME, wedges=360):
+    def __init__(self, port=PORT_NAME, wedges=500):
         self.lidar = RPLidar(port)
         self.measurements = {}
         self.running = False
