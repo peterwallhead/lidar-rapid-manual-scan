@@ -2,12 +2,41 @@ import os
 import time
 from datetime import datetime
 
-import keyboard
+import sys
+import termios
+import tty
 
 from lidar import LidarStreamer
 from scene import Frame
 
 
+def read_key():
+    """Read a single key press from the terminal."""
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+
+    try:
+        tty.setraw(fd)  # read immediately, no Enter required for normal keys
+        ch = sys.stdin.read(1)
+
+        # Handle Enter
+        if ch in ("\r", "\n"):
+            return "enter"
+
+        # Handle Space
+        if ch == " ":
+            return "space"
+
+        # Handle escape sequences for special keys if needed later
+        if ch == "\x1b":
+            seq = sys.stdin.read(2)
+            return ch + seq
+
+        return ch
+
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        
 def format_scan_data(scan):
     formatted_scan_data = []
     for (key, value) in scan.items():
@@ -33,33 +62,32 @@ def main():
 	print('Press enter or spacebar to capture a scan. Press q to finish scan session.')
 
 	while True:
-		key_event = keyboard.read_event()
+		key_name = read_key()
 
-		if key_event.event_type == keyboard.KEY_DOWN:
-			if key_event.name == 'space' or key_event.name == 'enter':
-				print("Scanning...")
-				scan_frame_data = lidar_stream.get_latest_measurements()
-				
-				with open(DATA_FILENAME, "a") as f:
-					scan_frame_data_string = str(scan_frame_data)
-					f.write(f'{scan_frame_data_string}\n')
-				
-				print("Plotting...")
-				# Create a new frame of scan data
-				frame_data = format_scan_data(scan_frame_data)
-				frame = Frame(frame_data, 0.1)
-				frame.plot() # Plot distance measurements to x,y coordinates
+		if key_name == "space" or key_name == "enter":
+			print("Scanning...")
+			scan_frame_data = lidar_stream.get_latest_measurements()
+			
+			with open(DATA_FILENAME, "a") as f:
+				scan_frame_data_string = str(scan_frame_data)
+				f.write(f'{scan_frame_data_string}\n')
+			
+			print("Plotting...")
+			# Create a new frame of scan data
+			frame_data = format_scan_data(scan_frame_data)
+			frame = Frame(frame_data, 0.1)
+			frame.plot() # Plot distance measurements to x,y coordinates
 
-				frame_filepath = f'collections/{collection_dir_name}/frames/'
-				frame_filename = f'frame-{frame_counter}'
-				frame.draw(filepath = frame_filepath, filename = frame_filename) # Generate scan preview image
-				
-				frame_counter += 1
+			frame_filepath = f'collections/{collection_dir_name}/frames/'
+			frame_filename = f'frame-{frame_counter}'
+			frame.draw(filepath = frame_filepath, filename = frame_filename) # Generate scan preview image
+			
+			frame_counter += 1
 
-				print('Scan capture finished. Move to the next location.')
-			elif key_event.name == 'q':
-				print("Exiting...")
-				break  # Exit the loop
+			print('Scan capture finished. Move to the next location.')
+		elif key_name == 'q':
+			print("Exiting...")
+			break  # Exit the loop
 
 	lidar_stream.stop()
 

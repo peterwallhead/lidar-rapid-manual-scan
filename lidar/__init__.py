@@ -2,7 +2,7 @@ import threading
 import time
 from .rplidar import RPLidar
 
-PORT_NAME = 'COM5'
+PORT_NAME = '/dev/ttyUSB0'
 
 class LidarStreamer:
     def __init__(self, port=PORT_NAME, wedges=500):
